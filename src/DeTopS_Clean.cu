@@ -310,59 +310,6 @@ __host__ __device__ T descJaccardDistance(
 
 	maxUnionSize = numberOfVectorsInA + numberOfVectorsInB;
 
-	////get the number of vectors in the description of A
-	//for (int i = 0; i < size; i += VECTOR_SIZE) {
-	//	if (A_desc[subsetAIndex + i] != minFloat) {
-	//		unionCardinality++;
-	//	}
-	//}
-
-	////get the number of vectors in the description of A, not in B
-	//for (int i = 0; i < size; i += VECTOR_SIZE) {
-	//	//for every vector in B's description that's not the initilized minFloat
-	//	if (A_desc[subsetAIndex + i] != minFloat) {
-	//		bool isUnique = true;
-	//		for (int j = 0; isUnique && j < size; j += VECTOR_SIZE) {
-	//			bool termIsRepeated = true;
-	//			//Check it against every term of the vector in the description of A
-	//			for (int k = 0; termIsRepeated && k < VECTOR_SIZE; k++) {
-	//				if (A_desc[subsetAIndex + i + k] != B_desc[subsetBIndex + j + k]) {
-	//					termIsRepeated = false;
-	//				}
-	//			}
-	//			if (termIsRepeated) {
-	//				isUnique = false;
-	//			}
-	//		}
-	//		if (isUnique) {
-	//			unionCardinality++;
-	//		}
-	//	}
-	//}
-
-	//get the number of vectors in the description of B, not in A
-	for (int i = 0; i < size; i += VECTOR_SIZE) {
-		//for every vector in B's description that's not the initilized minFloat
-		if (B_desc[subsetBIndex + i] != minFloat) {
-			bool isUnique = true;
-			for (int j = 0; isUnique && j < size; j += VECTOR_SIZE) {
-				bool termIsRepeated = true;
-				//Check it against every term of the vector in the description of A
-				for (int k = 0; termIsRepeated && k < VECTOR_SIZE; k++) {
-					if (B_desc[subsetBIndex + i + k] != A_desc[subsetAIndex + j + k]) {
-						termIsRepeated = false;
-					}
-				}
-				if (termIsRepeated) {
-					isUnique = false;
-				}
-			}
-			if (isUnique) {
-				unionCardinality++;
-			}
-		}
-	}
-
 	unionCardinality = maxUnionSize - descriptiveIntersectionCardinality;
 	return 1.0f - ((float)descriptiveIntersectionCardinality / (float)unionCardinality);
 }
@@ -1647,21 +1594,6 @@ __global__ void runMetricOnGPU(
 	unsigned col = blockIdx.x * blockDim.x + threadIdx.x;
 
 	unsigned size = VECTOR_SIZE * VECTORS_PER_SUBSET;
-	//unsigned setSize = 2 * VECTORS_PER_SUBSET * VECTOR_SIZE;
-	//extern __shared__ T shared[];
-
-	//T* ds_A = &shared[0];
-	//T* ds_B = &shared[setSize/2];
-
-	////each thread loads a subset based on row and column
-	//if (row < SUBSETS_PER_FAMILY && col < SUBSETS_PER_FAMILY) {
-	//	for (unsigned i = 0; i < size; i++) {
-	//		ds_A[row * size + i] = d_A[row * size + i];
-	//		ds_B[col * size + i] = d_B[col * size + i];
-	//	}
-	//}
-
-	//__syncthreads();
 
 	if (row < sizeOfA && col < sizeOfB) {
 		result[row * sizeOfB + col] = (*pseudometric)(
@@ -1711,7 +1643,6 @@ T dIteratedPseudometricGPU(
 	unsigned intersectionSize = pow(SUBSETS_PER_FAMILY, 2) * VECTORS_PER_SUBSET * VECTOR_SIZE;
 	unsigned indiciesPerFamily = VECTORS_PER_SUBSET * VECTOR_SIZE * SUBSETS_PER_FAMILY;
 	unsigned subsetSize = VECTOR_SIZE * VECTORS_PER_SUBSET;
-	//unsigned metricSharedMemorySize = 2 * VECTORS_PER_SUBSET * VECTOR_SIZE;
 	T* h_inter = new T[intersectionSize];
 	T result = 0.0;
 	T* h_family_A_less_B = setDifferenceOfFamilies(family_A, family_B);
@@ -2014,7 +1945,6 @@ T dIteratedPseudometric(
 	unsigned intersectionSize = pow(SUBSETS_PER_FAMILY, 2) * VECTORS_PER_SUBSET * VECTOR_SIZE;
 	unsigned indiciesPerFamily = VECTORS_PER_SUBSET * VECTOR_SIZE * SUBSETS_PER_FAMILY;
 	unsigned subsetSize = VECTOR_SIZE * VECTORS_PER_SUBSET;
-	//unsigned metricSharedMemorySize = 2 * indiciesPerFamily + intersectionSize;
 	T* h_inter = new T[intersectionSize];
 	T result = 0.0;
 	T* h_family_A_less_B = setDifferenceOfFamilies(family_A, family_B);
@@ -2048,7 +1978,6 @@ T dIteratedPseudometric(
 	cudaMalloc((void**)&d_inter, sizeof(T) * intersectionSize);
 	cudaMalloc((void**)&d_freqA, sizeof(unsigned) * numberOfVectorsPerFamily);
 	cudaMalloc((void**)&d_freqB, sizeof(unsigned) * numberOfVectorsPerFamily);
-	//cudaMalloc((void**)&d_tolerance, sizeof(float));
 
 	//copy to device
 	cudaMemcpy(d_A, family_A, sizeof(T) * indiciesPerFamily, cudaMemcpyHostToDevice);
@@ -2057,7 +1986,6 @@ T dIteratedPseudometric(
 	cudaMemcpy(d_family_B_less_A, h_family_B_less_A, sizeof(T) * indiciesPerFamily, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_freqA, h_freqA, sizeof(unsigned) * numberOfVectorsPerFamily, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_freqB, h_freqB, sizeof(unsigned) * numberOfVectorsPerFamily, cudaMemcpyHostToDevice);
-	//cudaMemcpy(d_tolerance, tolerance, sizeof(float) * numberOfVectorsPerFamily, cudaMemcpyHostToDevice);
 
 	dim3 intersectionGrid(ceil((double)numberOfVectorsPerFamily / TILE_WIDTH), 1, 1);
 	dim3 intersectionBlock(TILE_WIDTH, 1, 1);
