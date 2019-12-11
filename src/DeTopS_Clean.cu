@@ -1312,7 +1312,7 @@ void gpuIntersections(float* intersections, float* prefixPascal, bool time_code,
 }
 
 /***
-*	START OF ACS-4953 CHANGES
+*	START OF ACS-4931 CHANGES
 */
 
 template <typename T>
